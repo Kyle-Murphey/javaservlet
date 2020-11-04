@@ -12,15 +12,14 @@ public class JavaServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
-   // Function to calculate parameters of Basic COCOMO
-	private static String calculate(double[][] table, String[] mode, int size) 
+   // Function to calculate parameters of Intermediate COCOMO
+	private static String calculate(double[][] table, String[] mode, int size, double[][] tableIntermediate, int[] drivers) 
 	{
         String out = ""; //output String, formatted in JSON
 		double effort, time, staff; //stats we are trying to calculate
         int model = 0; //Organic, Semi-detached, Embedded
 
-        int[] drivers = {3,3,3,3,3,3,3,3,3,3,3,3,3,3,3};
-        int eaf = 1;
+        double eaf = 1.0; // effort adjustment factor for intermediate
         
         //cost drivers for the intermediate cocomo model, 0.00 is a nonvalue
         double[][] costDrivers = { {0.75, 0.88, 1.00, 1.15, 1.40}, //Required Software Reliability
@@ -65,10 +64,11 @@ public class JavaServlet extends HttpServlet {
         }
         
 	    // Calculate Effort 
-	    effort = table[model][0]*Math.pow(size,table[model][1]);
+        //effort = table[model][0]*Math.pow(size,table[model][1]); //basic
+        effort = tableIntermediate[model][0] * Math.pow(size,tableIntermediate[model][1]) * eaf; //intermediate cocomo
 	    
 	    // Calculate Time 
-	    time = table[model][2]*Math.pow(effort,table[model][3]);
+	    time = table[model][2] * Math.pow(effort,table[model][3]);
 	    
 	    //Calculate Persons Required 
 	    staff = effort/time;
@@ -92,27 +92,36 @@ public class JavaServlet extends HttpServlet {
 
     // handles the JSON request for KLOC size
     @Override
-    public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException 
+    {
         // formats the response to be in JSON
         resp.setContentType("application/json");
 
+        final int DRIVER_SIZE = 15; //maximum amount of cost drivers for intermediate cocomo
         double[][] tableBasic = { {2.4, 1.05, 2.5, 0.38}, {3.0, 1.12, 2.5, 0.35}, {3.6, 1.20, 2.5, 0.32} }; //table of values for basic cocomo calculations
         double[][] tableIntermediate = { {3.2, 1.05}, {3.0, 1.12}, {2.8, 1.20} }; //table of values for intermediate cocomo calculations
+        int[] drivers = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //intensity of driver values
         String mode[] = {"Organic","Semi-Detached","Embedded"}; //mode
         int size = 0; //KLOC
 
-        String param = req.getParameter("size");
-        PrintWriter out = resp.getWriter();
-    
-        //setting the size to an arbitrary value if none is given
-        if (param == null) {
+        PrintWriter out = resp.getWriter(); //for outputting the JSON response
+
+        // setting the size to an arbitrary value if none is given
+        if (req.getParameter("size") == null) 
+        {
             size = 4;
+        } else 
+        {
+            size = Integer.parseInt(req.getParameter("size"));
         }
-        else {
-            size = Integer.parseInt(param);
+
+        // get each cost driver value
+        for (int i = 0; i < DRIVER_SIZE; ++i) 
+        {
+            drivers[i] = Integer.parseInt(req.getParameterValues("drivers")[i]);
         }
 
         //output the results in JSON format
-        out.write(calculate(tableBasic, mode, size));
+        out.write(calculate(tableBasic, mode, size, tableIntermediate, drivers));
     }
 }
