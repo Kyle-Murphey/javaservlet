@@ -15,9 +15,31 @@ public class JavaServlet extends HttpServlet {
    // Function to calculate parameters of Basic COCOMO
 	private static String calculate(double[][] table, String[] mode, int size) 
 	{
-        String out = "";
-		double effort, time, staff;
-		int model = 0;
+        String out = ""; //output String, formatted in JSON
+		double effort, time, staff; //stats we are trying to calculate
+        int model = 0; //Organic, Semi-detached, Embedded
+
+        int[] drivers = {3,3,3,3,3,3,3,3,3,3,3,3,3,3,3};
+        int eaf = 1;
+        
+        //cost drivers for the intermediate cocomo model, 0.00 is a nonvalue
+        double[][] costDrivers = { {0.75, 0.88, 1.00, 1.15, 1.40}, //Required Software Reliability
+                                    {0.00, 0.94, 1.00, 1.08, 1.16}, //Size of Application Database
+                                    {0.70, 0.85, 1.00, 1.15, 1.30}, //Complexity of The Product
+                                    {0.00, 0.00, 1.00, 1.11, 1.30}, //Runtime Performance Constraints
+                                    {0.00, 0.00, 1.00, 1.06, 1.21}, //Memory Constraints
+                                    {0.00, 0.87, 1.00, 1.15, 1.30}, //Volatility of the virtual machine environment
+                                    {0.00, 0.94, 1.00, 1.07, 1.15}, //Required turnabout time
+                                    {1.46, 1.19, 1.00, 0.86, 0.71}, //Analyst capability
+                                    {1.29, 1.13, 1.00, 0.91, 0.82}, //Applications experience
+                                    {1.42, 1.17, 1.00, 0.86, 0.70}, //Software engineer capability
+                                    {1.21, 1.10, 1.00, 0.90, 0.00}, //Virtual machine experience
+                                    {1.14, 1.07, 1.00, 0.95, 0.00}, //Programming language experience
+                                    {1.24, 1.10, 1.00, 0.91, 0.82}, //Application of software engineering methods
+                                    {1.24, 1.10, 1.00, 0.91, 0.83}, //Use of software tools
+                                    {1.23, 1.08, 1.00, 1.04, 1.10}  //Required development schedule
+                                };
+
 		
 		// Check the mode according to size 
 	    if(size >= 2 && size <= 50)
@@ -33,9 +55,15 @@ public class JavaServlet extends HttpServlet {
 	        model = 2;        //embedded 
 	    }
         
-        //formatting response in JSON so we can use a String
+        
+        //formatting in JSON so we can use a String as a response
 	    out += String.format("{ \"size\": \"%d\", \"mode\": \"%s\", ", size, mode[model]);
-	    
+        
+        for (int i = 0; i < drivers.length; ++i)
+        {
+            eaf *= costDrivers[i][drivers[i]];
+        }
+        
 	    // Calculate Effort 
 	    effort = table[model][0]*Math.pow(size,table[model][1]);
 	    
@@ -68,7 +96,8 @@ public class JavaServlet extends HttpServlet {
         // formats the response to be in JSON
         resp.setContentType("application/json");
 
-        double[][] table = { {2.4, 1.05, 2.5, 0.38}, {3.0, 1.12, 2.5, 0.35}, {3.6, 1.20, 2.5, 0.32} }; //table of values for calculations
+        double[][] tableBasic = { {2.4, 1.05, 2.5, 0.38}, {3.0, 1.12, 2.5, 0.35}, {3.6, 1.20, 2.5, 0.32} }; //table of values for basic cocomo calculations
+        double[][] tableIntermediate = { {3.2, 1.05}, {3.0, 1.12}, {2.8, 1.20} }; //table of values for intermediate cocomo calculations
         String mode[] = {"Organic","Semi-Detached","Embedded"}; //mode
         int size = 0; //KLOC
 
@@ -84,6 +113,6 @@ public class JavaServlet extends HttpServlet {
         }
 
         //output the results in JSON format
-        out.write(calculate(table, mode, size));
+        out.write(calculate(tableBasic, mode, size));
     }
 }
